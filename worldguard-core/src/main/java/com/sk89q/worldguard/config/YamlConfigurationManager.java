@@ -96,7 +96,7 @@ public abstract class YamlConfigurationManager extends ConfigurationManager {
 
         DataSourceConfig dataSourceConfig = new DataSourceConfig(sqlDsn, sqlUsername, sqlPassword, sqlTablePrefix);
         SQLDriver sqlDriver = new SQLDriver(dataSourceConfig);
-        DirectoryYamlDriver yamlDriver = new DirectoryYamlDriver(getWorldsDataFolder(), "regions.yml");
+        DirectoryYamlDriver yamlDriver = new DirectoryYamlDriver(getWorldFileManager(), "regions.yml");
 
         this.regionStoreDriverMap = ImmutableMap.<DriverType, RegionDriver>builder()
                 .put(DriverType.MYSQL, sqlDriver)

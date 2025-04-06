@@ -64,6 +64,7 @@ import com.sk89q.worldguard.bukkit.util.logging.ClassSourceValidator;
 import com.sk89q.worldguard.commands.GeneralCommands;
 import com.sk89q.worldguard.commands.ProtectionCommands;
 import com.sk89q.worldguard.commands.ToggleCommands;
+import com.sk89q.worldguard.config.WorldFileManager;
 import com.sk89q.worldguard.protection.flags.Flag;
 import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.flags.registry.SimpleFlagRegistry;
@@ -468,6 +469,10 @@ public class WorldGuardPlugin extends JavaPlugin {
      */
     private void configureLogger() {
         RecordMessagePrefixer.register(Logger.getLogger("com.sk89q.worldguard"), "[WorldGuard] ");
+    }
+
+    public WorldFileManager getWorldFileManager() {
+        return new BukkitWorldFileManager();
     }
 
     /**

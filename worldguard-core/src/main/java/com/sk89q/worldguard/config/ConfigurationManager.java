@@ -106,6 +106,8 @@ public abstract class ConfigurationManager {
         return new File(getDataFolder(), "worlds");
     }
 
+    public abstract WorldFileManager getWorldFileManager();
+
     /**
      * Load the configuration.
      */

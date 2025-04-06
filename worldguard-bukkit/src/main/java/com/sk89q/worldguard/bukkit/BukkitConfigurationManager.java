@@ -22,6 +22,7 @@ package com.sk89q.worldguard.bukkit;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.extension.platform.Capability;
 import com.sk89q.worldedit.world.World;
+import com.sk89q.worldguard.config.WorldFileManager;
 import com.sk89q.worldguard.config.YamlConfigurationManager;
 import com.sk89q.worldedit.util.report.Unreported;
 
@@ -58,6 +59,10 @@ public class BukkitConfigurationManager extends YamlConfigurationManager {
         super.load();
         this.extraStats = getConfig().getBoolean("custom-metrics-charts", true);
         this.timedSessionHandlers = getConfig().getBoolean("extra-timings.session-handlers", true);
+    }
+
+    public WorldFileManager getWorldFileManager() {
+        return plugin.getWorldFileManager();
     }
 
     @Override

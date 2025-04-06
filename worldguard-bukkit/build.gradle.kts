@@ -11,6 +11,7 @@ applyPlatformAndCoreConfiguration()
 applyShadowConfiguration()
 
 repositories {
+    mavenCentral()
     maven {
         name = "paper"
         url = uri("https://papermc.io/repo/repository/maven-public/")
@@ -21,7 +22,7 @@ repositories {
     }
     maven {
         name = "aikar-timings"
-        url = uri("http://repo.aikar.co/nexus/content/groups/aikar/")
+        url = uri("https://repo.aikar.co/nexus/content/groups/aikar/")
     }
 }
 
