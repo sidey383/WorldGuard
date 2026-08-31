@@ -107,6 +107,16 @@ public abstract class ConfigurationManager {
     }
 
     /**
+     * Get the manager that resolves per-world data directories.
+     *
+     * <p>XMine fork: per-world data lives inside the world directory rather
+     * than under {@link #getWorldsDataFolder()}.</p>
+     *
+     * @return the world file manager
+     */
+    public abstract WorldFileManager getWorldFileManager();
+
+    /**
      * Load the configuration.
      */
     public abstract void load();

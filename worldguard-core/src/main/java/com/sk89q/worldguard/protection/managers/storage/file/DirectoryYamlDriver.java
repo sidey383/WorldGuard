@@ -19,6 +19,7 @@
 
 package com.sk89q.worldguard.protection.managers.storage.file;
 
+import com.sk89q.worldguard.config.WorldFileManager;
 import com.sk89q.worldguard.protection.managers.storage.RegionDatabase;
 import com.sk89q.worldguard.protection.managers.storage.RegionDriver;
 import com.sk89q.worldguard.protection.managers.storage.StorageException;
@@ -27,28 +28,33 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Stores region data in a {root_dir}/{id}/{filename} pattern on disk
+ * Stores region data in a {world_dir}/worldguard/{filename} pattern on disk
  * using {@link YamlRegionFile}.
+ *
+ * <p>The location of a world's directory is resolved by a
+ * {@link WorldFileManager} rather than being a fixed root directory, so that
+ * region data lives inside the world it belongs to.</p>
  */
 public class DirectoryYamlDriver implements RegionDriver {
 
-    private final File rootDir;
+    private final WorldFileManager fileManager;
     private final String filename;
 
     /**
      * Create a new instance.
      *
-     * @param rootDir the directory where the world folders reside
+     * @param fileManager resolves the data directory of a world
      * @param filename the filename (i.e. "regions.yml")
      */
-    public DirectoryYamlDriver(File rootDir, String filename) {
-        checkNotNull(rootDir);
+    public DirectoryYamlDriver(WorldFileManager fileManager, String filename) {
+        checkNotNull(fileManager);
         checkNotNull(filename);
-        this.rootDir = rootDir;
+        this.fileManager = fileManager;
         this.filename = filename;
     }
 
@@ -61,7 +67,7 @@ public class DirectoryYamlDriver implements RegionDriver {
     private File getPath(String id) {
         checkNotNull(id);
 
-        File f = new File(rootDir, id + File.separator + filename);
+        File f = new File(fileManager.getDirectory(id), filename);
         try {
             f.getCanonicalPath();
             return f;
@@ -83,12 +89,11 @@ public class DirectoryYamlDriver implements RegionDriver {
     public List<RegionDatabase> getAll() throws StorageException {
         List<RegionDatabase> stores = new ArrayList<>();
 
-        File files[] = rootDir.listFiles();
-        if (files != null) {
-            for (File dir : files) {
-                if (dir.isDirectory() && new File(dir, "regions.yml").isFile()) {
-                    stores.add(new YamlRegionFile(dir.getName(), getPath(dir.getName())));
-                }
+        for (Map.Entry<String, File> entry : fileManager.getAllDirectories().entrySet()) {
+            File dir = entry.getValue();
+            File file = new File(dir, filename);
+            if (dir.isDirectory() && file.isFile()) {
+                stores.add(new YamlRegionFile(entry.getKey(), file));
             }
         }
 
