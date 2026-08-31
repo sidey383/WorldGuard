@@ -21,23 +21,47 @@ package com.sk89q.worldguard.bukkit;
 
 import com.sk89q.worldguard.config.WorldFileManager;
 import org.bukkit.Bukkit;
+import org.bukkit.World;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 /**
- * Resolves per-world WorldGuard directories against the server's world
- * container, so that a world's data sits inside the world directory.
+ * Resolves per-world WorldGuard directories through the Bukkit API, so that a
+ * world's data sits inside the directory the server stores that world in.
+ *
+ * <p>{@link World#getWorldFolder()} is asked rather than joining the world
+ * container with the world name: since MC 26.1 the nether and the end of a
+ * level are stored under {@code <level>/dimensions/<namespace>/<dimension>}
+ * and no longer have a top-level {@code <container>/<level>_nether} directory
+ * of their own. A directory built from the world name would be outside every
+ * world, and the server clears such leftovers on startup.</p>
  */
 public class BukkitWorldFileManager extends WorldFileManager {
 
     @Override
-    public File baseWorldDirectory() {
-        return Bukkit.getWorldContainer();
+    protected File worldDirectory(String id) {
+        World world = Bukkit.getWorld(id);
+        if (world != null) {
+            return world.getWorldFolder();
+        }
+
+        // The world is not loaded, so the server cannot tell us where it is.
+        // Fall back to the pre-26.1 layout, which is also what a freshly
+        // created world of that name would get.
+        return new File(Bukkit.getWorldContainer(), id);
     }
 
     @Override
-    public boolean isWorldDirectory(File world) {
-        return new File(world, "level.dat").isFile();
+    protected Collection<String> worldNames() {
+        List<World> worlds = Bukkit.getWorlds();
+        List<String> names = new ArrayList<>(worlds.size());
+        for (World world : worlds) {
+            names.add(world.getName());
+        }
+        return names;
     }
 
 }

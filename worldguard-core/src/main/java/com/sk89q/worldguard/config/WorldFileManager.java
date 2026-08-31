@@ -20,7 +20,7 @@
 package com.sk89q.worldguard.config;
 
 import java.io.File;
-import java.util.Collections;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,10 +31,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * <p>Upstream WorldGuard keeps that data next to the plugin, in
  * {@code plugins/WorldGuard/worlds/<world>}. This fork puts it inside the
- * world directory itself ({@code <world container>/<world>/worldguard}) so
- * that regions and per-world configuration travel with the world when the
- * world directory is mounted or moved independently of the plugin
- * directory.</p>
+ * world's own directory on disk, so that regions and per-world configuration
+ * travel with the world when the world directory is mounted or moved
+ * independently of the plugin directory.</p>
  */
 public abstract class WorldFileManager {
 
@@ -53,45 +52,38 @@ public abstract class WorldFileManager {
      */
     public File getDirectory(String id) {
         checkNotNull(id);
-        return new File(new File(baseWorldDirectory(), id), WG_DIR_NAME);
+        return new File(worldDirectory(id), WG_DIR_NAME);
     }
 
     /**
-     * Get the directory that all world directories live in.
+     * Get the directory that the given world stores its own data in.
      *
-     * @return the world container
+     * @param id the world name
+     * @return that world's directory on disk
      */
-    public abstract File baseWorldDirectory();
+    protected abstract File worldDirectory(String id);
 
     /**
-     * Test whether the given directory is a world directory.
+     * Get the names of the worlds whose directories can be resolved.
      *
-     * @param world a candidate directory inside the world container
-     * @return true if it is a world
+     * @return world names
      */
-    public abstract boolean isWorldDirectory(File world);
+    protected abstract Collection<String> worldNames();
 
     /**
-     * Get the WorldGuard data directory of every world found on disk, keyed
-     * by world name.
+     * Get the WorldGuard data directory of every known world, keyed by world
+     * name.
      *
-     * <p>Unlike {@link #getDirectory(String)} this only reports worlds that
-     * actually exist in the world container.</p>
+     * <p>Unlike {@link #getDirectory(String)} this only reports worlds the
+     * platform actually knows about. The directories are not guaranteed to
+     * exist.</p>
      *
      * @return world name to WorldGuard data directory
      */
     public Map<String, File> getAllDirectories() {
-        File base = baseWorldDirectory();
-        File[] files = base.listFiles();
-        if (files == null) {
-            return Collections.emptyMap();
-        }
-
         Map<String, File> results = new HashMap<>();
-        for (File world : files) {
-            if (isWorldDirectory(world)) {
-                results.put(world.getName(), new File(world, WG_DIR_NAME));
-            }
+        for (String name : worldNames()) {
+            results.put(name, getDirectory(name));
         }
         return results;
     }
