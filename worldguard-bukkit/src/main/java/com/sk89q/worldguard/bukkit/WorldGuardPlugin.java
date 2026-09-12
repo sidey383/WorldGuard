@@ -67,6 +67,7 @@ import com.sk89q.worldguard.bukkit.util.Events;
 import com.sk89q.worldguard.commands.GeneralCommands;
 import com.sk89q.worldguard.commands.ProtectionCommands;
 import com.sk89q.worldguard.commands.ToggleCommands;
+import com.sk89q.worldguard.config.WorldFileManager;
 import com.sk89q.worldguard.protection.flags.Flag;
 import com.sk89q.worldguard.protection.flags.Flags;
 import com.sk89q.worldguard.protection.flags.registry.SimpleFlagRegistry;
@@ -113,6 +114,7 @@ public class WorldGuardPlugin extends JavaPlugin {
     private static BukkitWorldGuardPlatform platform;
     private final CommandsManager<Actor> commands;
     private PlayerMoveListener playerMoveListener;
+    private final WorldFileManager worldFileManager = new BukkitWorldFileManager();
 
     private static final int BSTATS_PLUGIN_ID = 3283;
 
@@ -511,6 +513,15 @@ public class WorldGuardPlugin extends JavaPlugin {
      */
     private void configureLogger() {
         RecordMessagePrefixer.register(Logger.getLogger("com.sk89q.worldguard"), "[WorldGuard] ");
+    }
+
+    /**
+     * Get the manager that resolves per-world WorldGuard data directories.
+     *
+     * @return the world file manager
+     */
+    public WorldFileManager getWorldFileManager() {
+        return worldFileManager;
     }
 
     /**

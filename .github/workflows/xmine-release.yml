@@ -1,0 +1,132 @@
+# Выпуск форка WorldGuard релизом GitHub.
+#
+# ЭТОТ РЕПОЗИТОРИЙ ПУБЛИЧНЫЙ, поэтому `runs-on` здесь — только раннеры GitHub и
+# никогда `self-hosted`. Правило записано в вики (infra/ci.md, «Граница
+# безопасности: только приватные репозитории»), и обе группы раннеров
+# организации имеют `allows_public_repositories=false`. Причина в том, что PR из
+# чужого форка исполняет workflow ИЗ САМОГО PR, то есть его автор волен дописать
+# `runs-on: self-hosted` и получить исполнение своего кода на хосте, где работает
+# игровой сервер. У XMineServer/Paper и XMineServer/SkinsRestorer тот же
+# комментарий и та же причина.
+#
+# ── Почему релиз, а не Reposilite ────────────────────────────────────────────
+#
+# Два других наших форка (SkinsRestorer, LibertyBans) публикуются в раздел
+# `third-party` нашего Reposilite, и у них для этого есть `xmine-publish.yml`.
+# Здесь иначе, и намеренно: XMineNode забирает WorldGuard записью `url:` с
+# пином sha256 (plugins/common.yml), то есть потребителю нужен постоянный
+# публичный адрес, а не координата maven. Релиз GitHub его и даёт.
+#
+# Побочная выгода: этому workflow НЕ НУЖНЫ СЕКРЕТЫ вообще. Публичный репозиторий
+# с секретами Reposilite — лишняя поверхность, и раз без них можно обойтись,
+# обходимся.
+#
+# Если когда-нибудь решим свести все форки к одному способу доставки, менять
+# придётся обе стороны разом: этот файл и запись в XMineNode.
+#
+# ── Как выпускать ────────────────────────────────────────────────────────────
+#
+#   git tag 7.0.18-world-container-1 && git push origin 7.0.18-world-container-1
+#
+# Имя тега: <версия апстрима>-world-container-<номер нашей сборки>. Номер
+# увеличивается, когда меняется наш патч при той же версии апстрима. Actions
+# берёт файл workflow ИЗ КОММИТА, НА КОТОРЫЙ УКАЗЫВАЕТ ТЕГ, — то есть этот файл
+# обязан быть в ветке до того, как на ней ставят тег.
+#
+# sha256 для plugins/common.yml печатается в сводку прогона: брать оттуда, а не
+# считать локальной сборкой. Локальная и та, что уехала в релиз, — разные файлы:
+# shadowJar воспроизводимость не гарантирует.
+
+name: XMine - release WorldGuard
+
+on:
+  push:
+    tags: ['*-world-container-*']
+  workflow_dispatch:
+
+# Два прогона на один тег означали бы гонку за то, чей jar попадёт в релиз.
+concurrency:
+  group: xmine-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # Форки самого форка не должны выпускать релизы под нашим именем.
+    if: github.repository == 'XMineServer/WorldGuard'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 25
+        # build-logic/src/main/kotlin/buildlogic.common-java.gradle.kts:
+        # javaRelease = 25.
+        uses: actions/setup-java@v4
+        with:
+          java-version: 25
+          distribution: 'zulu'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Tag must match the project version
+        # Дешёвая проверка против релиза с чужим номером: имя тега начинается с
+        # версии проекта. Перепутать их легко — версия лежит в gradle.properties,
+        # а тег набирают руками, — и разошлись бы они молча.
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          set -eu
+          tag="${GITHUB_REF#refs/tags/}"
+          version="$(sed -n 's/^version=//p' gradle.properties)"
+          if [ "${tag%%-world-container-*}" != "$version" ]; then
+            echo "::error::Tag '$tag' does not match version '$version' from gradle.properties"
+            exit 1
+          fi
+
+      - name: Build
+        run: ./gradlew :worldguard-bukkit:shadowJar --stacktrace
+
+      - name: Collect the artifact
+        # Имя ассета РОВНО `worldguard-bukkit.jar`: под этим именем его забирает
+        # XMineNode (plugins/common.yml, запись WorldGuard -> .../download/<тег>/
+        # worldguard-bukkit.jar). Переименуешь — сломается сборка образа ноды, и
+        # сломается на скачивании, далеко отсюда.
+        run: |
+          set -eu
+          src="$(find worldguard-bukkit/build/libs -name '*-dist.jar' | head -1)"
+          if [ -z "$src" ]; then
+            echo "::error::shadowJar produced no *-dist.jar"
+            exit 1
+          fi
+          cp "$src" worldguard-bukkit.jar
+          echo "SHA256=$(sha256sum worldguard-bukkit.jar | cut -d' ' -f1)" >> "$GITHUB_ENV"
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          tag="${GITHUB_REF#refs/tags/}"
+          # Заметки через файл, а не через --notes: внутри блока YAML у
+          # многострочного аргумента остались бы отступы этого файла.
+          {
+            printf 'Форк WorldGuard: данные регионов лежат внутри каталога мира (патч world-container).\n\n'
+            printf 'Апстрим: https://github.com/EngineHub/WorldGuard/releases/tag/%s\n\n' "${tag%%-world-container-*}"
+            printf 'sha256: `%s`\n' "$SHA256"
+          } > notes.md
+          gh release create "$tag" worldguard-bukkit.jar --title "$tag" --notes-file notes.md
+
+      - name: Report the coordinate
+        run: |
+          {
+            echo "### Released"
+            echo '```yaml'
+            echo "WorldGuard:"
+            echo "  url: https://github.com/XMineServer/WorldGuard/releases/download/${GITHUB_REF#refs/tags/}/worldguard-bukkit.jar"
+            echo "  sha256: $SHA256"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

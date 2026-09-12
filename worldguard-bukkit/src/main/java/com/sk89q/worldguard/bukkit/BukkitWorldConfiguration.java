@@ -38,6 +38,7 @@ import com.sk89q.worldguard.bukkit.chest.BukkitSignChestProtection;
 import com.sk89q.worldguard.bukkit.internal.TargetMatcherSet;
 import com.sk89q.worldguard.chest.ChestProtection;
 import com.sk89q.worldguard.commands.CommandUtils;
+import com.sk89q.worldguard.config.WorldFileManager;
 import com.sk89q.worldguard.config.YamlWorldConfiguration;
 import org.bukkit.potion.PotionEffectType;
 import org.yaml.snakeyaml.error.YAMLException;
@@ -81,7 +82,7 @@ public class BukkitWorldConfiguration extends YamlWorldConfiguration {
      * @param parentConfig The parent configuration to read defaults from
      */
     public BukkitWorldConfiguration(WorldGuardPlugin plugin, String worldName, YAMLProcessor parentConfig) {
-        File baseFolder = new File(plugin.getDataFolder(), "worlds/" + worldName);
+        File baseFolder = plugin.getWorldFileManager().getDirectory(worldName);
         File configFile = new File(baseFolder, "config.yml");
         blacklistFile = new File(baseFolder, "blacklist.txt");
 
